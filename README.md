@@ -44,8 +44,3 @@ print(summary_table(res))
 - `src/gi_gi_n_gi_multiclass/experiments/`: sweep helpers and runners
 - `notebooks/`: example notebooks (starter templates)
 - `tests/`: basic correctness tests
-
-## Notes
-
-- The simulator uses **lazy cancellation** for abandonment events (customers have an `active` flag).
-- Metrics can be computed on the full run or restricted to the post-warmup window.

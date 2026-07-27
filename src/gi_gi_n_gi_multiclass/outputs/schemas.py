@@ -18,6 +18,7 @@ def customers_to_dataframe(res: Any) -> pd.DataFrame:
             "assigned_class_id": getattr(rec, "assigned_class_id", getattr(rec, "class_id", 0)),
             "arrival_time": rec.arrival_time,
             "service_start": rec.service_start,
+            "eligibility_time": getattr(rec, "eligibility_time", rec.arrival_time),
             "service_end": rec.service_end,
             "service_time": rec.service_time,
             "patience_time": rec.patience_time,

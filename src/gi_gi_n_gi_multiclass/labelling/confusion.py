@@ -29,4 +29,9 @@ class ConfusionMatrixClassifier:
 
     def assign(self, true_class_id: int, rng: np.random.Generator) -> int:
         probs = self.matrix[true_class_id]
+        if len(probs) == 2:
+            # Binary classification is the common housing use case. A single
+            # uniform draw is much faster than ``Generator.choice`` with a
+            # probability vector and has the same categorical distribution.
+            return int(rng.random() >= probs[0])
         return int(rng.choice(len(probs), p=probs))

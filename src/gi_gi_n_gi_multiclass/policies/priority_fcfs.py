@@ -22,12 +22,4 @@ class PriorityFCFS:
         cls = self.choose_class(state, now)
         if cls is None:
             return None
-        # FCFS: smallest arrival_time among waiting in that class
-        best = None
-        best_arr = None
-        for cid in state.waiting_by_class[cls]:
-            arr = state.arrival_time[cid]
-            if best is None or arr < best_arr:
-                best = cid
-                best_arr = arr
-        return best
+        return state.oldest_waiting(cls)

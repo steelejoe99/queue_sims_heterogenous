@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set, Iterable
+from collections import deque
+from typing import Deque, Dict, Optional, Set, Iterable
 
 
 @dataclass
@@ -14,6 +15,11 @@ class MultiSystemState:
     # waiting customers per assigned class. In housing mode these are only the
     # customers whose eligibility delay has elapsed.
     waiting_by_class: list[Set[int]] = field(default_factory=list)
+
+    # Arrival order is retained separately so FCFS selection does not scan a
+    # large waiting set for every housing placement. Departures are removed
+    # lazily when the policy inspects the front of the queue.
+    waiting_order_by_class: list[Deque[int]] = field(default_factory=list)
 
     # customer attributes
     arrival_time: Dict[int, float] = field(default_factory=dict)
@@ -34,11 +40,14 @@ class MultiSystemState:
         self.idle_servers = self.n_servers
         if not self.waiting_by_class:
             self.waiting_by_class = [set() for _ in range(self.n_classes)]
+        if not self.waiting_order_by_class:
+            self.waiting_order_by_class = [deque() for _ in range(self.n_classes)]
         if not self.in_service_by_class:
             self.in_service_by_class = [0 for _ in range(self.n_classes)]
 
     def add_waiting(self, cid: int, cls: int, arrival: float) -> None:
         self.waiting_by_class[cls].add(cid)
+        self.waiting_order_by_class[cls].append(cid)
         self.arrival_time[cid] = arrival
         self.class_id[cid] = cls
         self.active_waiting[cid] = True
@@ -57,6 +66,7 @@ class MultiSystemState:
         cls = self.class_id[cid]
         self.pending_eligibility.discard(cid)
         self.waiting_by_class[cls].add(cid)
+        self.waiting_order_by_class[cls].append(cid)
         return True
 
     def start_service(self, cid: int) -> None:
@@ -90,3 +100,11 @@ class MultiSystemState:
 
     def waiting_customers(self, cls: int) -> Iterable[int]:
         return self.waiting_by_class[cls]
+
+    def oldest_waiting(self, cls: int) -> Optional[int]:
+        """Return the oldest active customer in a class, if one exists."""
+        order = self.waiting_order_by_class[cls]
+        active = self.waiting_by_class[cls]
+        while order and order[0] not in active:
+            order.popleft()
+        return order[0] if order else None

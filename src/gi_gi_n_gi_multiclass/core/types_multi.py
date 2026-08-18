@@ -41,12 +41,26 @@ class MultiSimConfig:
     # reusable-server queue exactly.
     housing_mode: bool = False
 
-    # In housing mode, one batch of true-class arrivals is added every
-    # batch_interval. Counts are ordered exactly as `classes`.
+    # Housing arrivals can either be periodic true-class batches or ordinary
+    # renewal arrivals driven by each CustomerClass.interarrival distribution.
+    # Batch mode remains the default for backwards compatibility.
+    housing_arrival_mode: Literal["batch", "renewal"] = "batch"
+
+    # In batch mode, one batch of true-class arrivals is added every
+    # batch_interval. Counts are ordered exactly as `classes`. For example,
+    # use 1.0 for annual batches or 1.0 / 12.0 for monthly batches.
     batch_arrival_counts: Optional[Sequence[int]] = None
     batch_interval: float = 1.0
     first_batch_time: float = 0.0
     last_batch_time: Optional[float] = None
+
+    # In renewal mode, arrivals stop after this time. If omitted, arrivals
+    # continue through the simulation end time.
+    last_arrival_time: Optional[float] = None
+
+    # Optional true-class counts already waiting at simulation time zero.
+    # These people follow the usual eligibility and abandonment rules.
+    initial_queue_counts: Optional[Sequence[int]] = None
 
     # In housing mode, `n_servers` is the number of housing units released at
     # each housing epoch. Units are consumed permanently when allocated.

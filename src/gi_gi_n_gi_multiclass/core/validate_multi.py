@@ -15,6 +15,8 @@ def validate_multi_config(cfg: MultiSimConfig) -> None:
     if getattr(cfg, "classifier", None) is not None:
         if cfg.classifier.n_classes != len(cfg.classes):
             raise ValueError("classifier size must match number of classes")
+    if cfg.classify_initial_queue and cfg.classifier is None:
+        raise ValueError("classify_initial_queue requires a classifier")
 
     if cfg.housing_mode:
         if cfg.housing_arrival_mode not in {"batch", "renewal"}:
@@ -34,11 +36,18 @@ def validate_multi_config(cfg: MultiSimConfig) -> None:
                 raise ValueError("last_batch_time must be >= first_batch_time")
         elif cfg.last_arrival_time is not None and cfg.last_arrival_time < 0:
             raise ValueError("last_arrival_time must be >= 0")
-        if cfg.initial_queue_counts is not None:
-            if len(cfg.initial_queue_counts) != len(cfg.classes):
-                raise ValueError("initial_queue_counts must match number of classes")
-            if any(int(x) < 0 or int(x) != x for x in cfg.initial_queue_counts):
-                raise ValueError("initial_queue_counts must contain nonnegative integers")
+        if cfg.initial_queue is not None:
+            for customer in cfg.initial_queue:
+                if not 0 <= customer.true_class_id < len(cfg.classes):
+                    raise ValueError("initial customer true_class_id is out of range")
+                if not 0 <= customer.assigned_class_id < len(cfg.classes):
+                    raise ValueError("initial customer assigned_class_id is out of range")
+                if customer.age < 0:
+                    raise ValueError("initial customer age must be nonnegative")
+                if customer.residual_patience is not None and customer.residual_patience < 0:
+                    raise ValueError("initial customer residual_patience must be nonnegative")
+                if customer.remaining_eligibility < 0:
+                    raise ValueError("initial customer remaining_eligibility must be nonnegative")
         if cfg.housing_release_interval <= 0:
             raise ValueError("housing_release_interval must be > 0")
         if cfg.first_housing_release < 0:

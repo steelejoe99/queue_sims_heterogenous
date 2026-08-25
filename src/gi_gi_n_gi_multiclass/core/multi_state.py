@@ -30,6 +30,7 @@ class MultiSystemState:
     # can still abandon, including during the ineligible waiting period.
     active_waiting: Dict[int, bool] = field(default_factory=dict)
     pending_eligibility: Set[int] = field(default_factory=set)
+    active_population: int = 0
 
     # in-service tracking. In housing mode this records permanently allocated
     # units and is useful to policies that depend on cumulative allocations.
@@ -51,12 +52,14 @@ class MultiSystemState:
         self.arrival_time[cid] = arrival
         self.class_id[cid] = cls
         self.active_waiting[cid] = True
+        self.active_population += 1
 
     def add_ineligible(self, cid: int, cls: int, arrival: float, eligible_at: float) -> None:
         self.arrival_time[cid] = arrival
         self.class_id[cid] = cls
         self.eligibility_time[cid] = eligible_at
         self.active_waiting[cid] = True
+        self.active_population += 1
         self.pending_eligibility.add(cid)
 
     def make_eligible(self, cid: int) -> bool:
@@ -75,6 +78,7 @@ class MultiSystemState:
         self.pending_eligibility.discard(cid)
         self.in_service.add(cid)
         self.active_waiting[cid] = False
+        self.active_population -= 1
         self.idle_servers -= 1
         self.in_service_by_class[cls] += 1
 
@@ -88,6 +92,8 @@ class MultiSystemState:
         cls = self.class_id[cid]
         self.waiting_by_class[cls].discard(cid)
         self.pending_eligibility.discard(cid)
+        if self.active_waiting.get(cid, False):
+            self.active_population -= 1
         self.active_waiting[cid] = False
 
     def add_capacity(self, amount: int) -> None:

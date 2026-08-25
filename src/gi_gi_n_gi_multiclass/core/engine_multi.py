@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Optional, Literal
 import heapq
 
-from gi_gi_n_gi_multiclass.core.types_multi import MultiSimConfig, MultiSimResult, MultiCustomerRecord
+from gi_gi_n_gi_multiclass.core.types_multi import (
+    InitialQueueCustomer,
+    MultiSimConfig,
+    MultiSimResult,
+    MultiCustomerRecord,
+)
 from gi_gi_n_gi_multiclass.core.multi_state import MultiSystemState
 from gi_gi_n_gi_multiclass.core.rng_multi import make_multi_rng_streams, make_label_rng
 from gi_gi_n_gi_multiclass.core.validate_multi import validate_multi_config
@@ -50,7 +55,11 @@ class MultiEventQueue:
         return len(self._heap)
 
 
-def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
+def run_sim_multi(
+    cfg: MultiSimConfig,
+    *,
+    _stop_at_population: Optional[int] = None,
+) -> MultiSimResult:
     """Run the multiclass simulation.
 
     The default path is the original reusable-server queue. Setting
@@ -76,7 +85,7 @@ def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
     end_time = cfg.warmup_time + cfg.run_time
 
     if cfg.housing_mode:
-        if cfg.initial_queue_counts is not None:
+        if cfg.initial_queue is not None:
             eq.push(time=0.0, priority=0, etype="INITIAL_QUEUE")
         if cfg.housing_arrival_mode == "batch":
             eq.push(time=cfg.first_batch_time, priority=2, etype="BATCH_ARRIVAL")
@@ -171,6 +180,57 @@ def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
 
         return cid
 
+    def add_initial_customer(initial: InitialQueueCustomer) -> int:
+        """Restore a survivor from a prehistory snapshot at simulation time zero."""
+        true_cls_id = int(initial.true_class_id)
+        if cfg.classify_initial_queue and cfg.classifier is not None:
+            assigned_cls_id = int(cfg.classifier.assign(true_cls_id, label_rng))
+        else:
+            assigned_cls_id = int(initial.assigned_class_id)
+        age = float(initial.age)
+        arrival_time = -age
+        residual = initial.residual_patience
+        patience_time = None if residual is None else age + float(residual)
+        abandon_time = None if residual is None else float(residual)
+        eligibility_time = float(initial.remaining_eligibility)
+
+        cid = len(customers)
+        rec = MultiCustomerRecord(
+            customer_id=cid,
+            class_id=assigned_cls_id,
+            true_class_id=true_cls_id,
+            assigned_class_id=assigned_cls_id,
+            arrival_time=arrival_time,
+            service_time=0.0,
+            patience_time=patience_time,
+            abandon_time=abandon_time,
+            eligibility_time=eligibility_time,
+        )
+        customers.append(rec)
+
+        if eligibility_time > 0.0:
+            state.add_ineligible(cid, assigned_cls_id, arrival_time, eligibility_time)
+            if abandon_time is None or abandon_time >= eligibility_time:
+                eq.push(
+                    time=eligibility_time,
+                    priority=0,
+                    etype="ELIGIBILITY",
+                    customer_id=cid,
+                    class_id=assigned_cls_id,
+                )
+        else:
+            state.add_waiting(cid, assigned_cls_id, arrival_time)
+
+        if abandon_time is not None:
+            eq.push(
+                time=abandon_time,
+                priority=3,
+                etype="ABANDON",
+                customer_id=cid,
+                class_id=assigned_cls_id,
+            )
+        return cid
+
     def try_start_services(now: float) -> None:
         """Start reusable services or permanently allocate available housing."""
         state.now = now
@@ -211,13 +271,14 @@ def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
         state.now = now
 
         if event_type == "INITIAL_QUEUE":
-            counts = cfg.initial_queue_counts
-            assert counts is not None
-            for true_cls_id, count in enumerate(counts):
-                for _ in range(int(count)):
-                    add_customer(true_cls_id, now)
+            initial_queue = cfg.initial_queue
+            assert initial_queue is not None
+            # Historical arrival order supplies an unambiguous FCFS order and
+            # prevents true class from leaking into tie-breaking.
+            for initial in sorted(initial_queue, key=lambda customer: -customer.age):
+                add_initial_customer(initial)
 
-            log(ev, note=f"initial_queue total={sum(int(x) for x in counts)}")
+            log(ev, note=f"initial_queue total={len(initial_queue)}")
             try_start_services(now)
 
         elif event_type == "BATCH_ARRIVAL":
@@ -300,6 +361,11 @@ def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
             else:
                 log(ev, note="abandon_canceled")
 
+        if _stop_at_population is not None:
+            if state.active_population >= _stop_at_population:
+                end_time = now
+                break
+
     for rec in customers:
         if rec.outcome is None:
             rec.outcome = "IN_SYSTEM_END"
@@ -309,4 +375,5 @@ def run_sim_multi(cfg: MultiSimConfig) -> MultiSimResult:
         customers=customers,
         end_time=float(end_time),
         event_log=event_log,
+        final_idle_servers=state.idle_servers,
     )

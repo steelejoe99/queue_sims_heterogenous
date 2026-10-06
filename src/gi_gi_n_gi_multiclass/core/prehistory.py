@@ -1,3 +1,5 @@
+"""Helpers for constructing a realistic initial state for housing studies."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -9,6 +11,8 @@ from gi_gi_n_gi_multiclass.core.types_multi import InitialQueueCustomer, MultiSi
 
 @dataclass(frozen=True)
 class HousingQueueSnapshot:
+    """Customer-level unresolved queue state at an observed simulation time."""
+
     customers: tuple[InitialQueueCustomer, ...]
     prehistory_time: float
     time_to_next_housing_release: float
@@ -26,7 +30,8 @@ def generate_housing_queue_snapshot(
     The returned customer-level snapshot preserves the selection-relevant
     history and the residual patience of every survivor. The supplied config
     must describe the baseline prehistory and must not itself contain an
-    initial queue.
+    initial queue. This lets a later intervention study begin with a backlog
+    without discarding the historical ages that drive FCFS ordering.
     """
     if not cfg.housing_mode:
         raise ValueError("prehistory snapshots require housing_mode=True")

@@ -1,9 +1,12 @@
+"""Fail-fast validation for multiclass and housing-mode configuration."""
+
 from __future__ import annotations
 
 from gi_gi_n_gi_multiclass.core.types_multi import MultiSimConfig
 
 
 def validate_multi_config(cfg: MultiSimConfig) -> None:
+    """Raise ``ValueError`` when a multiclass configuration is inconsistent."""
     if cfg.n_servers <= 0:
         raise ValueError("n_servers must be > 0")
     if cfg.run_time <= 0:

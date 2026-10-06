@@ -1,3 +1,5 @@
+"""Mutable state shared by multiclass policies and the event engine."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,6 +9,7 @@ from typing import Deque, Dict, Optional, Set, Iterable
 
 @dataclass
 class MultiSystemState:
+    """Queue, eligibility, and capacity state visible to multiclass policies."""
     n_servers: int
     n_classes: int
     now: float = 0.0
@@ -47,6 +50,7 @@ class MultiSystemState:
             self.in_service_by_class = [0 for _ in range(self.n_classes)]
 
     def add_waiting(self, cid: int, cls: int, arrival: float) -> None:
+        """Add an immediately eligible customer to their assigned-class queue."""
         self.waiting_by_class[cls].add(cid)
         self.waiting_order_by_class[cls].append(cid)
         self.arrival_time[cid] = arrival
@@ -55,6 +59,7 @@ class MultiSystemState:
         self.active_population += 1
 
     def add_ineligible(self, cid: int, cls: int, arrival: float, eligible_at: float) -> None:
+        """Track a customer who is waiting for an eligibility delay to expire."""
         self.arrival_time[cid] = arrival
         self.class_id[cid] = cls
         self.eligibility_time[cid] = eligible_at
@@ -63,6 +68,7 @@ class MultiSystemState:
         self.pending_eligibility.add(cid)
 
     def make_eligible(self, cid: int) -> bool:
+        """Move an active ineligible customer into their assigned-class queue."""
         if not self.active_waiting.get(cid, False):
             self.pending_eligibility.discard(cid)
             return False
@@ -73,6 +79,7 @@ class MultiSystemState:
         return True
 
     def start_service(self, cid: int) -> None:
+        """Allocate current capacity to a selected customer."""
         cls = self.class_id[cid]
         self.waiting_by_class[cls].discard(cid)
         self.pending_eligibility.discard(cid)
@@ -83,12 +90,14 @@ class MultiSystemState:
         self.in_service_by_class[cls] += 1
 
     def end_service(self, cid: int) -> None:
+        """Release a reusable server after a conventional service completion."""
         cls = self.class_id[cid]
         self.in_service.discard(cid)
         self.idle_servers += 1
         self.in_service_by_class[cls] -= 1
 
     def abandon(self, cid: int) -> None:
+        """Remove a customer who exits before receiving service or housing."""
         cls = self.class_id[cid]
         self.waiting_by_class[cls].discard(cid)
         self.pending_eligibility.discard(cid)
@@ -97,6 +106,7 @@ class MultiSystemState:
         self.active_waiting[cid] = False
 
     def add_capacity(self, amount: int) -> None:
+        """Add newly released consumable housing capacity."""
         if amount < 0:
             raise ValueError("capacity addition must be nonnegative")
         self.idle_servers += int(amount)

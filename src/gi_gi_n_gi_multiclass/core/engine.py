@@ -1,4 +1,7 @@
+"""Event loop for the conventional single-class GI/GI/N(+GI) simulator."""
+
 from __future__ import annotations
+
 from typing import Optional
 from .types import SimConfig, SimResult, CustomerRecord
 from .events import Event, EventQueue
@@ -7,6 +10,7 @@ from .rng import RNGStreams
 from .validate import validate_config
 
 def _log_append(event_log: Optional[list[dict]], **row) -> None:
+    """Append a structured event row only when event logging is enabled."""
     if event_log is not None:
         event_log.append(row)
 
@@ -32,7 +36,7 @@ def run_sim(cfg: SimConfig) -> SimResult:
     next_cid = 0
 
     def try_start_services(now: float) -> None:
-        # Start as many services as possible
+        """Fill every currently idle server according to the configured policy."""
         while state.idle_servers > 0 and state.waiting:
             chosen = cfg.policy.select_customer(state, now)
             if chosen is None:

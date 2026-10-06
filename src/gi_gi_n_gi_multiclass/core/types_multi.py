@@ -1,3 +1,5 @@
+"""Configuration and result records for the multiclass and housing engine."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,6 +9,7 @@ from gi_gi_n_gi_multiclass.core.types import Distribution
 
 
 class MultiPolicy(Protocol):
+    """Selection interface used by the multiclass event engine."""
     name: str
 
     def select_customer(self, state: "MultiSystemState", now: float) -> Optional[int]: ...
@@ -14,6 +17,7 @@ class MultiPolicy(Protocol):
 
 @dataclass(frozen=True)
 class CustomerClass:
+    """Arrival, service, and patience inputs for one true customer class."""
     name: str
     interarrival: Distribution
     service: Distribution
@@ -37,6 +41,11 @@ class InitialQueueCustomer:
 
 @dataclass(frozen=True)
 class MultiSimConfig:
+    """Immutable inputs for reusable-server or consumable-housing simulations.
+
+    In housing mode, ``n_servers`` is interpreted as the number of units made
+    available at each housing release.  It is not a reusable-server count.
+    """
     n_servers: int
     classes: Sequence[CustomerClass]
     policy: MultiPolicy
@@ -90,6 +99,7 @@ class MultiSimConfig:
 
 @dataclass
 class MultiCustomerRecord:
+    """Lifecycle record for one customer in a multiclass simulation."""
     customer_id: int
     class_id: int
 
@@ -110,6 +120,7 @@ class MultiCustomerRecord:
 
 @dataclass
 class MultiSimResult:
+    """Raw records produced by :func:`run_sim_multi`."""
     config: MultiSimConfig
     customers: list[MultiCustomerRecord]
     end_time: float

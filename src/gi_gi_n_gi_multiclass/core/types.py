@@ -1,11 +1,18 @@
+"""Configuration and result records for the single-class simulation engine."""
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional, Protocol, Literal, Any
 
 class Distribution(Protocol):
+    """Minimal sampling interface required by a simulation input."""
+
     def sample(self, rng: Any) -> float: ...
 
 class Policy(Protocol):
+    """Selection interface called when capacity becomes available."""
+
     name: str
     def select_customer(self, state: "SystemState", now: float) -> Optional[int]: ...
 
@@ -13,6 +20,7 @@ EventType = Literal["ARRIVAL", "SERVICE_END", "ABANDON"]
 
 @dataclass(frozen=True)
 class SimConfig:
+    """Immutable inputs for one conventional GI/GI/N(+GI) simulation run."""
     n_servers: int
     interarrival: Distribution
     service: Distribution
@@ -29,6 +37,7 @@ class SimConfig:
 
 @dataclass
 class CustomerRecord:
+    """Lifecycle record for one simulated customer."""
     customer_id: int
     arrival_time: float
     service_time: float
@@ -41,6 +50,7 @@ class CustomerRecord:
 
 @dataclass
 class SimResult:
+    """Raw records produced by :func:`gi_gi_n_gi_multiclass.core.run_sim`."""
     config: SimConfig
     customers: list[CustomerRecord]
     end_time: float

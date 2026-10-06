@@ -1,2 +1,5 @@
-# src/gi_gi_n_gi_multiclass/labeling/__init__.py
+"""Observed-class assignment models used in multiclass experiments."""
+
 from .confusion import ConfusionMatrixClassifier
+
+__all__ = ["ConfusionMatrixClassifier"]

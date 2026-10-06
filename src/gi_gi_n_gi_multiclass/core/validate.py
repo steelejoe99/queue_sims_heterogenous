@@ -1,7 +1,11 @@
+"""Fail-fast validation for single-class run configuration."""
+
 from __future__ import annotations
+
 from .types import SimConfig
 
 def validate_config(cfg: SimConfig) -> None:
+    """Raise ``ValueError`` when basic time-horizon or capacity inputs are invalid."""
     if cfg.n_servers <= 0:
         raise ValueError("n_servers must be positive")
     if cfg.run_time <= 0:

@@ -1,4 +1,7 @@
+"""Independent reproducible random-number streams for the single-class engine."""
+
 from __future__ import annotations
+
 import numpy as np
 
 class RNGStreams:

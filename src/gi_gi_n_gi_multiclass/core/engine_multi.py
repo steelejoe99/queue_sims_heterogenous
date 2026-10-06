@@ -1,3 +1,9 @@
+"""Event loop for multiclass queues and consumable-housing allocation models.
+
+The engine owns event ordering, state transitions, and random draws. Policies
+only select a customer from the currently eligible waiting population.
+"""
+
 from __future__ import annotations
 
 from typing import Optional, Literal
@@ -28,6 +34,7 @@ EventEntry = tuple[float, int, int, EventType, int, int]
 
 
 class MultiEventQueue:
+    """Tuple-backed priority queue with deterministic ordering for multiclass events."""
     def __init__(self) -> None:
         # Raw tuples let ``heapq`` compare and store events in C without
         # allocating a Python event object for every insertion.
@@ -42,6 +49,7 @@ class MultiEventQueue:
         customer_id: int = -1,
         class_id: int = -1,
     ) -> None:
+        """Schedule one event, preserving insertion order for ties."""
         self._seq += 1
         heapq.heappush(
             self._heap,
@@ -49,6 +57,7 @@ class MultiEventQueue:
         )
 
     def pop(self) -> EventEntry:
+        """Return the next scheduled event."""
         return heapq.heappop(self._heap)
 
     def __len__(self) -> int:

@@ -1,4 +1,4 @@
-# src/gi_gi_n_gi_multiclass/labeling/confusion.py
+"""Confusion-matrix based assignment of observed customer classes."""
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -13,6 +13,7 @@ class ConfusionMatrixClassifier:
     matrix: np.ndarray
 
     def __post_init__(self):
+        """Validate and store a row-stochastic true-to-assigned matrix."""
         m = np.asarray(self.matrix, dtype=float)
         if m.ndim != 2 or m.shape[0] != m.shape[1]:
             raise ValueError("matrix must be square")
@@ -28,6 +29,7 @@ class ConfusionMatrixClassifier:
         return int(self.matrix.shape[0])
 
     def assign(self, true_class_id: int, rng: np.random.Generator) -> int:
+        """Draw an assigned class conditional on a customer's true class."""
         probs = self.matrix[true_class_id]
         if len(probs) == 2:
             # Binary classification is the common housing use case. A single
